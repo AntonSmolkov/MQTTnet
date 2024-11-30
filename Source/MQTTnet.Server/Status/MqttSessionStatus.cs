@@ -4,6 +4,7 @@
 
 using System.Collections;
 using MQTTnet.Internal;
+using MQTTnet.Packets;
 using MQTTnet.Server.Internal;
 using MQTTnet.Server.Internal.Formatter;
 
@@ -40,22 +41,59 @@ public sealed class MqttSessionStatus
         return _session.DeleteAsync();
     }
 
-    public Task DeliverApplicationMessageAsync(MqttApplicationMessage applicationMessage)
+
+    /// <summary>
+    /// Delivers an application message immediately to the session.
+    /// </summary>
+    /// <param name="applicationMessage">The application message to deliver.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result contains the delivered MQTT publish packet.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="applicationMessage"/> is null.</exception>
+    public async Task<MqttPublishPacket> DeliverApplicationMessageAsync(MqttApplicationMessage applicationMessage)
     {
         ArgumentNullException.ThrowIfNull(applicationMessage);
 
         var packetBusItem = new MqttPacketBusItem(MqttPublishPacketFactory.Create(applicationMessage));
         _session.EnqueueDataPacket(packetBusItem);
+        var mqttPacket = await packetBusItem.WaitAsync();
 
-        return packetBusItem.WaitAsync();
+        return (MqttPublishPacket)mqttPacket;
     }
 
-    public Task EnqueueApplicationMessageAsync(MqttApplicationMessage applicationMessage)
+    /// <summary>
+    /// Attempts to enqueue an application message to the session's send buffer.
+    /// </summary>
+    /// <param name="applicationMessage">The application message to enqueue.</param>
+    /// <param name="publishPacket">The resulting publish packet, if the operation was successful.</param>
+    /// <returns><c>true</c> if the message was successfully enqueued; otherwise, <c>false</c>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="applicationMessage"/> is null.</exception>
+    public bool TryEnqueueApplicationMessage(MqttApplicationMessage applicationMessage, out MqttPublishPacket publishPacket)
     {
         ArgumentNullException.ThrowIfNull(applicationMessage);
 
-        _session.EnqueueDataPacket(new MqttPacketBusItem(MqttPublishPacketFactory.Create(applicationMessage)));
+        publishPacket = MqttPublishPacketFactory.Create(applicationMessage);
+        var enqueueDataPacketResult = _session.EnqueueDataPacket(new MqttPacketBusItem(publishPacket));
 
+        if (enqueueDataPacketResult == EnqueueDataPacketResult.Enqueued)
+        {
+            return true;
+        }
+
+        publishPacket = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Enqueues an application message to the session's send buffer.
+    /// </summary>
+    /// <param name="applicationMessage">The application message to enqueue.</param>
+    /// <returns>A completed task.</returns>
+    [Obsolete("This method is obsolete. Use TryEnqueueApplicationMessage instead.")]
+    public Task EnqueueApplicationMessageAsync(MqttApplicationMessage applicationMessage)
+    {
+        TryEnqueueApplicationMessage(applicationMessage, out _);
         return CompletedTask.Instance;
     }
+
 }
