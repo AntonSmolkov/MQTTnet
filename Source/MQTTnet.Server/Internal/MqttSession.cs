@@ -110,7 +110,7 @@ public sealed class MqttSession : IDisposable
 
     public EnqueueDataPacketResult EnqueueDataPacket(MqttPacketBusItem packetBusItem)
     {
-        if (_packetBus.ItemsCount(MqttPacketBusPartition.Data) >= _serverOptions.MaxPendingMessagesPerClient)
+        if (PendingDataPacketsCount >= _serverOptions.MaxPendingMessagesPerClient)
         {
             if (_serverOptions.PendingMessagesOverflowStrategy == MqttPendingMessagesOverflowStrategy.DropNewMessage)
             {
