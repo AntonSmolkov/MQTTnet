@@ -41,7 +41,6 @@ public sealed class MqttSessionStatus
         return _session.DeleteAsync();
     }
 
-
     /// <summary>
     /// Delivers an application message immediately to the session.
     /// </summary>
@@ -49,7 +48,6 @@ public sealed class MqttSessionStatus
     /// <returns>
     /// A task that represents the asynchronous operation. The result contains the delivered MQTT publish packet.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="applicationMessage"/> is null.</exception>
     public async Task<MqttPublishPacket> DeliverApplicationMessageAsync(MqttApplicationMessage applicationMessage)
     {
         ArgumentNullException.ThrowIfNull(applicationMessage);
@@ -65,9 +63,13 @@ public sealed class MqttSessionStatus
     /// Attempts to enqueue an application message to the session's send buffer.
     /// </summary>
     /// <param name="applicationMessage">The application message to enqueue.</param>
-    /// <param name="publishPacket">The resulting publish packet, if the operation was successful.</param>
+    /// <param name="publishPacket">The corresponding MQTT publish packed, if the operation was successful.</param>
     /// <returns><c>true</c> if the message was successfully enqueued; otherwise, <c>false</c>.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="applicationMessage"/> is null.</exception>
+    /// <remarks>
+    /// When <see cref="MqttServerOptions.PendingMessagesOverflowStrategy"/> is set to <see cref="MqttPendingMessagesOverflowStrategy.DropOldestQueuedMessage"/>,
+    /// this method always returns <c>true</c>.
+    /// However, an existing message in the queue may be dropped later to make room for the newly enqueued message.
+    /// </remarks>
     public bool TryEnqueueApplicationMessage(MqttApplicationMessage applicationMessage, out MqttPublishPacket publishPacket)
     {
         ArgumentNullException.ThrowIfNull(applicationMessage);
